@@ -144,14 +144,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def planning_agent_fetch_articles(topic: str, num_results: int = 15) -> List[Dict]:
-    """Planning Agent: Fetch 10-20 diverse, high-quality articles for the query."""
-    # System prompt for planning agent (for future LLM use, if needed)
-    planning_prompt = (
-        "You are a planning agent. Your job is to take the user's research query and plan a comprehensive search strategy. "
-        "Fetch 10-20 diverse, high-quality articles or sources relevant to the query, ensuring coverage of different perspectives and subtopics. "
-        "Return a list of article metadata (title, link, snippet, etc.)."
-    )
+def search_serpapi(topic: str, num_results: int = 2) -> List[Dict]:
+    """Search using SerpAPI"""
     url = "https://serpapi.com/search"
     params = {
         "q": topic,
@@ -160,11 +154,9 @@ def planning_agent_fetch_articles(topic: str, num_results: int = 15) -> List[Dic
         "num": num_results
     }
     try:
-        res = requests.get(url, params=params, timeout=15)
+        res = requests.get(url, params=params, timeout=5)
         res.raise_for_status()
         data = res.json()
-    except requests.Timeout as e:
-        raise HTTPException(status_code=504, detail="Search timed out. Please try again later.")
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Search API error: {str(e)}")
 
@@ -342,86 +334,6 @@ OUTPUT:
         questions = [q.strip('-•* ') for q in response.split('\n') if q.strip()]
     return questions[:4]
 
-def generate_report(topic: str, snippets: List[Dict]) -> str:
-    """Generate a structured academic report using only the most relevant articles."""
-    combined = " ".join([r["snippet"] for r in snippets if r["snippet"]])
-    # Build a reference list for the report
-    references = "\n".join([
-        f"- {r['title']} ({r['link']})" for r in snippets if r.get('title') and r.get('link')
-    ])
-    user_prompt = {
-        "role": "user",
-        "content": f"""
-TASK: Academic Research Report Generation
-
-RESEARCH TOPIC: "{topic}"
-
-OBJECTIVE:
-Generate a comprehensive academic report using ONLY the most relevant articles provided below. The report must include:
-- Title
-- Abstract
-- Introduction
-- Main Body
-- Conclusions
-- Recommendations
-
-METHODOLOGY:
-- Integrate and synthesize information from the provided article snippets
-- Ensure logical flow and academic rigor
-- Use formal academic language
-- Each section should be clearly labeled
-- Reference the selected articles in the text where appropriate
-
-SELECTED ARTICLES:
-{references}
-
-ARTICLE SNIPPETS:
---- BEGIN SNIPPETS ---
-{combined}
---- END SNIPPETS ---
-
-Generate the full report as specified above, referencing the articles where relevant."""
-    }
-    return generate_llm_response([system_prompt, user_prompt], temperature=0.3, max_tokens=900)
-
-def comparison_agent_select_relevant_articles(topic: str, articles: list[dict], top_n: int = 5) -> list[dict]:
-    """Comparison Agent: Analyze and rank articles for relevance to the query."""
-    # Prepare the prompt for the comparison agent
-    article_summaries = "\n\n".join([
-        f"Title: {a['title']}\nSnippet: {a['snippet']}\nLink: {a['link']}" for a in articles
-    ])
-    comparison_prompt = {
-        "role": "system",
-        "content": (
-            f"You are a comparison agent. Your job is to analyze the user's research query and the list of fetched articles. "
-            f"Compare the query with each article to determine which articles are most relevant and high-quality for answering the query. "
-            f"Return a ranked list of the most relevant articles (max {top_n}), with a brief justification for each selection. "
-            "Format: JSON array of objects with fields: title, link, snippet, justification."
-        )
-    }
-    user_prompt = {
-        "role": "user",
-        "content": f"""
-RESEARCH QUERY: {topic}
-
-ARTICLES:
-{article_summaries}
-
-Please select and rank the most relevant articles as described above.
-"""
-    }
-    # Call the LLM to get the ranked articles
-    import json as pyjson
-    response = generate_llm_response([comparison_prompt, user_prompt], temperature=0.3, max_tokens=900)
-    try:
-        relevant_articles = pyjson.loads(response)
-        if isinstance(relevant_articles, list):
-            return relevant_articles[:top_n]
-    except Exception:
-        return articles[:top_n]
-    # Fallback: return the first top_n articles if parsing fails
-    return articles[:top_n]
-
 def get_or_create_session(session_id: Optional[str] = None) -> ChatSession:
     """Get existing session or create new one"""
     if session_id and session_id in chat_sessions:
@@ -505,53 +417,41 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
     """Conduct research and save to in-memory storage"""
     if not session_id:
         raise HTTPException(status_code=400, detail="Session ID is required for research")
-    
     try:
         num_results = request.num_results if request.num_results is not None else 3
-        articles = planning_agent_fetch_articles(request.topic, num_results)
-        if not articles:
+        results = search_serpapi(request.topic, num_results)
+        if not results:
             raise HTTPException(status_code=404, detail="No search results found")
-        # Comparison agent selects the most relevant articles
-        relevant_articles = comparison_agent_select_relevant_articles(request.topic, articles, top_n=5)
-        summary = generate_summary(request.topic, relevant_articles)
-        notes = generate_notes(request.topic, relevant_articles)
-        key_insights = generate_key_insights(request.topic, [r["snippet"] for r in relevant_articles if r["snippet"]])
+        summary = generate_summary(request.topic, results)
+        notes = generate_notes(request.topic, results)
+        key_insights = generate_key_insights(request.topic, [r["snippet"] for r in results if r["snippet"]])
         suggestions = generate_suggestions(request.topic)
         reflecting_questions = generate_reflecting_questions(request.topic)
-        report = generate_report(request.topic, relevant_articles)
         timestamp = datetime.now().isoformat()
-        
-        # Save to in-memory storage
         research_entry = {
             "timestamp": timestamp,
             "topic": request.topic,
-            "results": relevant_articles,
+            "results": results,
             "summary": summary,
             "notes": notes,
             "insights": key_insights,
-            "sources": relevant_articles,  # Add sources to the saved research entry
-            "report": report
+            "sources": results
         }
-        
         session = await storage_manager.get_session(session_id)
         if session:
             if "research_history" not in session:
                 session["research_history"] = []
             session["research_history"].append(research_entry)
             session["current_topic"] = request.topic
-            # Also save sources to the session
             if "sources" not in session:
                 session["sources"] = []
-            session["sources"].extend(relevant_articles)
+            session["sources"].extend(results)
             await storage_manager.update_session(session_id, session)
-        
-        # Add to search history
         await storage_manager.add_search_history(session_id, {
             "query": request.topic,
             "timestamp": timestamp,
             "num_results": num_results
         })
-        
         return ResearchResponse(
             session_id=session_id,
             topic=request.topic,
@@ -559,9 +459,9 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
             summary=summary,
             notes=notes,
             key_insights=key_insights,
-            sources=[ResearchResult(**r) for r in relevant_articles],
+            sources=[ResearchResult(**r) for r in results],
             suggestions=suggestions,
-            report=report,
+            report=None,
             reflecting_questions=reflecting_questions
         )
     except Exception as e:
@@ -572,24 +472,12 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
 async def chat_with_aria(request: ChatRequest):
     """Chat with ARIA using MongoDB-backed session"""
     try:
-        # Get session from storage
         session = await storage_manager.get_session(request.session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-
-        # Build messages for LLM
-        topic = None
-        if session.get("research_history"):
-            topic = session["research_history"][-1]["topic"]
-        system_message = """
-You are ARIA, a helpful research assistant. Always use the previous conversation context to answer follow-up questions, even if the user refers to 'these', 'it', or similar pronouns. Never ask the user to repeat themselves. Be academically rigorous but conversational.
-
-IMPORTANT: Only answer questions that are directly related to the current research topic: '{}'. If the user asks about something unrelated, politely respond that you can only answer questions about the current research topic.
-""".format(topic or "(no topic)")
         messages = [
-            {"role": "system", "content": system_message}
+            {"role": "system", "content": "You are ARIA, a helpful research assistant. Always use the previous conversation context to answer follow-up questions, even if the user refers to 'these', 'it', or similar pronouns. Never ask the user to repeat themselves. Be academically rigorous but conversational."}
         ]
-
         if request.history and isinstance(request.history, list) and len(request.history) > 0:
             for msg in request.history:
                 if msg.get("role") in ("user", "ai") and msg.get("content"):
@@ -600,7 +488,6 @@ IMPORTANT: Only answer questions that are directly related to the current resear
             if not (messages and messages[-1]["role"] == "user" and messages[-1]["content"] == request.message):
                 messages.append({"role": "user", "content": request.message})
         else:
-            # Use session context
             context = ""
             if session.get("research_history"):
                 latest_research = session["research_history"][-1]
@@ -615,26 +502,20 @@ PREVIOUS CONVERSATION:
                 recent_conversations = session.get("conversation_history", [])[-5:]
                 for conv in recent_conversations:
                     context += f"User: {conv['user']}\nARIA: {conv['assistant']}\n\n"
-
             messages.append({
-                "role": "user", 
+                "role": "user",
                 "content": f"\nCONTEXT FROM CURRENT SESSION:\n{context}\n\nUSER QUESTION/MESSAGE:\n{request.message}\n"
             })
-
         assistant_response = generate_llm_response(messages, temperature=0.4, max_tokens=600)
-
-        # Save to storage
         conversation_entry = {
             "timestamp": datetime.now().isoformat(),
             "user": request.message,
             "assistant": assistant_response
         }
-
         if "conversation_history" not in session:
             session["conversation_history"] = []
         session["conversation_history"].append(conversation_entry)
         await storage_manager.update_session(request.session_id, session)
-
         return ChatResponse(
             session_id=request.session_id,
             response=assistant_response,

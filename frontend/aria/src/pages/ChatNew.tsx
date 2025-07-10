@@ -21,9 +21,7 @@ import {
   ClipboardCopy,
   Copy,
   ChevronDown,
-  ChevronRight,
-  StickyNote,
-  Link2
+  ChevronRight
 } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { apiService, ResearchResponse, SaveResearchRequest } from '@/lib/api';
@@ -219,7 +217,11 @@ const ChatNew = () => {
 
   // Add this helper for animated dots
   const TypingDots = () => (
-    <span className="text-teal-600 font-medium">ARIA is typing...</span>
+    <span className="inline-flex">
+      <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+      <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+      <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+    </span>
   );
 
   // Restore handleCopy and handleSave for research result tabs
@@ -286,11 +288,39 @@ const ChatNew = () => {
     setError(null);
     setResearchResults(null);
     setIsShowingSavedResults(false);
+    
     try {
-      // Always conduct new research, do not load saved results
-      const res = await apiService.conductResearch(query, 3, sessionId!);
-      setResearchResults(res);
-      setIsShowingSavedResults(false);
+      // First, check if we have saved research for this query
+      const savedResponse = await apiService.getAllSavedResearch();
+      const savedForQuery = savedResponse.saved_research.filter(
+        (item: any) => item.query === query
+      );
+      
+      if (savedForQuery.length > 0) {
+        // Display saved results
+        const savedData = savedForQuery.reduce((acc: any, item: any) => {
+          if (!acc[item.section_name]) {
+            acc[item.section_name] = item.content;
+          }
+          return acc;
+        }, {});
+        
+        setSavedResearchResults({
+          topic: query,
+          summary: savedData.Summary || savedData.summary || '',
+          notes: savedData.Notes || '',
+          key_insights: savedData.KeyInsights || savedData.key_insights || '',
+          suggestions: savedData.Suggestions ? savedData.Suggestions.split('\n').filter((s: string) => s.trim()) : [],
+          reflecting_questions: savedData.ReflectingQuestions ? savedData.ReflectingQuestions.split('\n').filter((s: string) => s.trim()) : [],
+          sources: savedData.References ? savedData.References.split('\n').map((link: string) => ({ link: link.trim() })) : []
+        });
+        setIsShowingSavedResults(true);
+      } else {
+        // No saved results, conduct new research
+        const res = await apiService.conductResearch(query, 3, sessionId!);
+        setResearchResults(res);
+        setIsShowingSavedResults(false);
+      }
     } catch (e: any) {
       setError(e.message || 'Something went wrong');
     } finally {
@@ -399,7 +429,7 @@ const ChatNew = () => {
             {/* Input Bar */}
             <form onSubmit={handleSend} className="flex gap-4 mb-8">
               <Input
-                placeholder="Ask ARIA anything... "
+                placeholder="Ask ARIA anything... (e.g., 'Explain quantum computing' or 'What are the symptoms?')"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 className="flex-1 h-12 text-lg border-teal-200 focus:border-teal-400"
@@ -521,10 +551,10 @@ const ChatNew = () => {
                               <BookOpen className="w-5 h-5 mr-2 text-green-600" /> Suggestions
                             </TabsTrigger>
                             <TabsTrigger value="notes">
-                              <StickyNote className="w-5 h-5 mr-2 text-yellow-600" /> Notes
+                              <BookOpen className="w-5 h-5 mr-2 text-yellow-600" /> Notes
                             </TabsTrigger>
                             <TabsTrigger value="references">
-                              <Link2 className="w-5 h-5 mr-2 text-cyan-600" /> References
+                              <LinkIcon className="w-5 h-5 mr-2 text-cyan-600" /> References
                             </TabsTrigger>
                             {/* Place Report tab after References */}
                             <TabsTrigger value="report">
@@ -665,7 +695,7 @@ const ChatNew = () => {
                           <Card className="border-amber-100">
                             <CardHeader className="flex flex-row items-center justify-between">
                               <CardTitle className="flex items-center gap-2">
-                                <StickyNote className="w-5 h-5 text-yellow-600" />
+                                <BookOpen className="w-5 h-5 text-yellow-600" />
                                 Notes
                               </CardTitle>
                               <div className="flex gap-2">
@@ -697,7 +727,7 @@ const ChatNew = () => {
                           <Card className="border-amber-100">
                             <CardHeader className="flex flex-row items-center justify-between">
                               <CardTitle className="flex items-center gap-2">
-                                <Link2 className="w-5 h-5 text-cyan-600" />
+                                <LinkIcon className="w-5 h-5 text-cyan-600" />
                                 Reference Links
                               </CardTitle>
                               <div className="flex gap-2">
@@ -709,7 +739,7 @@ const ChatNew = () => {
                               <div ref={referencesRef} className="space-y-3">
                                 {results.sources.slice(0, 5).map((source, index) => (
                                   <div key={index} className="flex items-center gap-2">
-                                    <Link2 className="w-4 h-4 text-cyan-400" />
+                                    <LinkIcon className="w-4 h-4 text-cyan-400" />
                                     <a
                                       href={source.link}
                                       target="_blank"
