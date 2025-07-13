@@ -29,6 +29,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@
 import { toast } from '@/hooks/use-toast';
 import { extractKeywords } from '@/lib/utils';
 
+// Helper function to linkify URLs in text
+function linkify(text: string) {
+  // Remove [Link] or [link] (case-insensitive) from the text
+  const cleaned = text.replace(/\[link\]/gi, '');
+  const urlRegex = /(https?:\/\/[^\s)]+)/g;
+  const parts = cleaned.split(urlRegex);
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 const ChatNew = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -419,8 +443,15 @@ const ChatNew = () => {
             {(() => {
               // Prefer the topic from researchResults, else the latest input
               const topic = researchResults?.topic || input || '';
+              const correctionMade = researchResults?.correction_made;
+              const originalTopic = researchResults?.original_topic;
               return topic ? (
                 <div className="mb-4">
+                  {correctionMade && originalTopic && (
+                    <div className="text-sm italic text-gray-500 mb-1">
+                      Did you mean <span className="italic text-teal-700">{topic}</span>?
+                    </div>
+                  )}
                   <span className="text-lg font-semibold text-teal-700">Topic: </span>
                   <span className="text-lg text-gray-900">{topic}</span>
                 </div>
@@ -429,7 +460,7 @@ const ChatNew = () => {
             {/* Input Bar */}
             <form onSubmit={handleSend} className="flex gap-4 mb-8">
               <Input
-                placeholder="Ask ARIA anything... (e.g., 'Explain quantum computing' or 'What are the symptoms?')"
+                placeholder="Ask ARIA anything..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 className="flex-1 h-12 text-lg border-teal-200 focus:border-teal-400"
@@ -510,8 +541,8 @@ const ChatNew = () => {
                       ))}
                       {isChatLoading && (
                         <div className="flex justify-start">
-                          <div className="bg-white border border-green-200 rounded-lg px-5 py-3 text-base">
-                            <TypingDots />
+                          <div className="bg-white border border-green-200 rounded-lg px-5 py-3 text-base text-gray-500 font-medium">
+                            ARIA is typing...
                           </div>
                         </div>
                       )}
@@ -770,16 +801,16 @@ const ChatNew = () => {
                               <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                                 {results.report
                                   ? results.report.split(/\n\n+/).map((para, idx) => {
-                                      // Try to bold section headings
-                                      if (/^(Title|Abstract|Introduction|Main Body|Conclusions|Recommendations)[:：]?/i.test(para.trim())) {
-                                        const [heading, ...rest] = para.split(/[:：]/);
+                                      // Highlight headings in blue and remove hashes
+                                      const headingMatch = para.match(/^\s*#+\s*(.+)$/);
+                                      if (headingMatch) {
                                         return (
                                           <div key={idx} className="mb-4 last:mb-0">
-                                            <span className="font-bold text-blue-700">{heading.trim()}:</span> {rest.join(':').trim()}
+                                            <span className="block font-bold text-blue-700 text-lg">{headingMatch[1].trim()}</span>
                                           </div>
                                         );
                                       }
-                                      return <p key={idx} className="mb-4 last:mb-0">{para.trim()}</p>;
+                                      return <p key={idx} className="mb-4 last:mb-0">{linkify(para.trim())}</p>;
                                     })
                                   : <span className="text-gray-400">No report generated.</span>}
                               </div>

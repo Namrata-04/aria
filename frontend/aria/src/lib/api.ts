@@ -31,6 +31,8 @@ export interface ResearchResult {
 export interface ResearchResponse {
   session_id: string;
   topic: string;
+  original_topic?: string;
+  correction_made?: boolean;
   timestamp: string;
   summary: string;
   notes: string;
@@ -80,6 +82,17 @@ export interface SavedResearchResponse {
     saved_at: string;
   }>;
   total: number;
+}
+
+export interface FullResearchRequest {
+  query: string;
+  num_results?: number;
+}
+
+export interface FullResearchResponse {
+  articles: ResearchResult[];
+  relevant_summary: string;
+  structured_report: string;
 }
 
 class ApiService {
@@ -206,6 +219,13 @@ class ApiService {
 
   async getAllSearchHistory(): Promise<{ search_history: any[]; total: number }> {
     return this.request<{ search_history: any[]; total: number }>(`/search-history-all`);
+  }
+
+  async fullResearch(request: FullResearchRequest): Promise<FullResearchResponse> {
+    return this.request<FullResearchResponse>('/full-research', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   }
 }
 
