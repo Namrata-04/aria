@@ -32,3 +32,4 @@ yarn-error.log*
 backend/.env
 backend/.env.rtf
 frontend/aria/.env.rtf
+backend/.env
