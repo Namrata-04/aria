@@ -90,6 +90,7 @@ const ChatNew = () => {
   const [isShowingSavedResults, setIsShowingSavedResults] = useState(false);
   const [savedResearchResults, setSavedResearchResults] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<{[label: string]: boolean}>({});
+  const [showResearchTabs, setShowResearchTabs] = useState(true);
 
   // Initialize session on mount
   useEffect(() => {
@@ -204,6 +205,7 @@ const ChatNew = () => {
   const handleChatSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || !sessionId) return;
+    if (showResearchTabs) setShowResearchTabs(false); // Hide research tabs on first chat
     const userMsg = { role: 'user' as const, content: chatInput.trim() };
     setChatMessages(prev => [...prev, userMsg]);
     const msgForAI = chatInput.trim();
@@ -499,6 +501,11 @@ const ChatNew = () => {
                       <MessageSquare className="w-5 h-5 text-teal-600" />
                       Chat about this Search
                     </CardTitle>
+                    {!showResearchTabs && (
+                      <Button size="sm" variant="outline" onClick={() => setShowResearchTabs(true)} className="text-teal-700 border-teal-400 hover:bg-teal-50">
+                        <ArrowLeft className="w-4 h-4 mr-1 text-teal-700" /> Topic
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto mb-4 bg-green-50 rounded p-3">
@@ -562,265 +569,267 @@ const ChatNew = () => {
                   </CardContent>
                 </Card>
                 {/* Results Section (tabs) */}
-                <div className="mb-8">
-                  {(() => {
-                    const results = researchResults || savedResearchResults;
-                    return (
-                      <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="summary" className="w-full">
-                        <div className="flex items-center mb-4">
-                          <TabsList className="flex-1">
-                            <TabsTrigger value="summary">
-                              <FileText className="w-5 h-5 mr-2 text-teal-600" /> Summary
-                            </TabsTrigger>
-                            <TabsTrigger value="insights">
-                              <Lightbulb className="w-5 h-5 mr-2 text-amber-600" /> Key Insights
-                            </TabsTrigger>
-                            <TabsTrigger value="reflecting">
-                              <MessageSquare className="w-5 h-5 mr-2 text-purple-600" /> Reflecting Questions
-                            </TabsTrigger>
-                            <TabsTrigger value="suggestions">
-                              <BookOpen className="w-5 h-5 mr-2 text-green-600" /> Suggestions
-                            </TabsTrigger>
-                            <TabsTrigger value="notes">
-                              <BookOpen className="w-5 h-5 mr-2 text-yellow-600" /> Notes
-                            </TabsTrigger>
-                            <TabsTrigger value="references">
-                              <LinkIcon className="w-5 h-5 mr-2 text-cyan-600" /> References
-                            </TabsTrigger>
-                            {/* Place Report tab after References */}
-                            <TabsTrigger value="report">
-                              <FileText className="w-5 h-5 mr-2 text-blue-600" /> Report
-                            </TabsTrigger>
-                          </TabsList>
-                        </div>
-                        <TabsContent value="summary">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-teal-600" />
-                                Summary
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(summaryRef)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('Summary', results.summary)}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div ref={summaryRef} className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {results.summary
-                                  .split(/\n\n+/)
-                                  .map((para, idx) => {
-                                    const clean = para
-                                      .replace(/^#+\s*/, '')
-                                      .replace(/^[-*]\s*/, '')
-                                      .replace(/[*_]{1,2}/g, '')
-                                      .trim();
-                                    return clean ? <p key={idx} className="mb-4 last:mb-0">{clean}</p> : null;
-                                  })}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="insights">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <Lightbulb className="w-5 h-5 text-teal-600" />
-                                Key Insights
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(insightsRef)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('KeyInsights', results.key_insights)}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div ref={insightsRef} className="space-y-4">
-                                {(() => {
-                                  // Group lines: heading (numbered or bold) + following lines (dashed/sub-points) as one paragraph
-                                  const lines = results.key_insights.split('\n');
-                                  const groups = [];
-                                  let current = '';
-                                  for (let i = 0; i < lines.length; i++) {
-                                    let line = lines[i].replace(/^#+\s*/, '').replace(/^[-*]\s*/, '').replace(/[*_]{1,2}/g, '').trim();
-                                    if (!line) continue;
-                                    // If line looks like a heading (starts with number and dot, or is bold), start new group
-                                    if (/^\d+\./.test(line) || (/^[A-Z]/.test(line) && !current)) {
-                                      if (current) groups.push(current.trim());
-                                      current = line;
-                                    } else {
-                                      // Otherwise, append to current group
-                                      current += ' ' + line;
-                                    }
-                                  }
-                                  if (current) groups.push(current.trim());
-                                  return groups.map((para, idx) => (
-                                    <div key={idx} className="bg-teal-50 rounded-lg px-4 py-3 text-gray-800 shadow-sm">
-                                      {para}
-                                    </div>
-                                  ));
-                                })()}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="reflecting">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <MessageSquare className="w-5 h-5 text-purple-600" />
-                                Reflecting Questions
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleSave('ReflectingQuestions', results.reflecting_questions.join('\n'))}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-3">
-                                {results.reflecting_questions && results.reflecting_questions.length > 0 ? (
-                                  results.reflecting_questions.map((q, idx) => (
-                                    <button
-                                      key={idx}
-                                      className="block w-full text-left p-3 rounded-lg border border-purple-100 bg-purple-50 hover:bg-purple-100 transition cursor-pointer text-gray-800"
-                                      onClick={() => {
-                                        setInput(q);
-                                        setTimeout(() => {
-                                          document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                                        }, 0);
-                                      }}
-                                    >
-                                      {q}
-                                    </button>
-                                  ))
-                                ) : (
-                                  <div className="text-gray-500">No reflecting questions generated.</div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="suggestions">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <BookOpen className="w-5 h-5 text-green-600" />
-                                Suggestions
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(questionsRef)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('Suggestions', results.suggestions.join('\n'))}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div ref={questionsRef} className="space-y-3">
-                                {results.suggestions.slice(0, 5).map((suggestion, index) => (
-                                  <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                                    <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                                    <p className="text-gray-700">{suggestion}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="notes">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <BookOpen className="w-5 h-5 text-yellow-600" />
-                                Notes
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(notesRef)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('Notes', results.notes)}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div ref={notesRef} className="space-y-4">
-                                {results.notes
-                                  .split(/\n\n+/)
-                                  .map((para, idx) => {
-                                    const clean = para
-                                      .replace(/^#+\s*/, '')
-                                      .replace(/^[-*]\s*/, '')
-                                      .replace(/[*_]{1,2}/g, '')
-                                      .trim();
-                                    return clean ? (
-                                      <div key={idx} className="bg-amber-50 rounded-lg px-4 py-3 text-gray-800 shadow-sm">
-                                        {clean}
-                                      </div>
-                                    ) : null;
-                                  })}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="references">
-                          <Card className="border-amber-100">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="flex items-center gap-2">
-                                <LinkIcon className="w-5 h-5 text-cyan-600" />
-                                Reference Links
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(referencesRef)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('References', results.sources.map(s => s.link).join('\n'))}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div ref={referencesRef} className="space-y-3">
-                                {results.sources.slice(0, 5).map((source, index) => (
-                                  <div key={index} className="flex items-center gap-2">
-                                    <LinkIcon className="w-4 h-4 text-cyan-400" />
-                                    <a
-                                      href={source.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-cyan-600 hover:text-cyan-800 underline break-all"
-                                    >
-                                      {source.link}
-                                    </a>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                        <TabsContent value="report">
-                          <Card className="border-blue-100">
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-blue-600" />
-                                Report
-                              </CardTitle>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleCopy(results.report)}>Copy</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSave('Report', results.report)}>Save</Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {results.report
-                                  ? results.report.split(/\n\n+/).map((para, idx) => {
-                                      // Highlight headings in blue and remove hashes
-                                      const headingMatch = para.match(/^\s*#+\s*(.+)$/);
-                                      if (headingMatch) {
-                                        return (
-                                          <div key={idx} className="mb-4 last:mb-0">
-                                            <span className="block font-bold text-blue-700 text-lg">{headingMatch[1].trim()}</span>
-                                          </div>
-                                        );
+                {showResearchTabs && (
+                  <div className="mb-8">
+                    {(() => {
+                      const results = researchResults || savedResearchResults;
+                      return (
+                        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="summary" className="w-full">
+                          <div className="flex items-center mb-4">
+                            <TabsList className="flex-1">
+                              <TabsTrigger value="summary">
+                                <FileText className="w-5 h-5 mr-2 text-teal-600" /> Summary
+                              </TabsTrigger>
+                              <TabsTrigger value="insights">
+                                <Lightbulb className="w-5 h-5 mr-2 text-amber-600" /> Key Insights
+                              </TabsTrigger>
+                              <TabsTrigger value="reflecting">
+                                <MessageSquare className="w-5 h-5 mr-2 text-purple-600" /> Reflecting Questions
+                              </TabsTrigger>
+                              <TabsTrigger value="suggestions">
+                                <BookOpen className="w-5 h-5 mr-2 text-green-600" /> Suggestions
+                              </TabsTrigger>
+                              <TabsTrigger value="notes">
+                                <BookOpen className="w-5 h-5 mr-2 text-yellow-600" /> Notes
+                              </TabsTrigger>
+                              <TabsTrigger value="references">
+                                <LinkIcon className="w-5 h-5 mr-2 text-cyan-600" /> References
+                              </TabsTrigger>
+                              {/* Place Report tab after References */}
+                              <TabsTrigger value="report">
+                                <FileText className="w-5 h-5 mr-2 text-blue-600" /> Report
+                              </TabsTrigger>
+                            </TabsList>
+                          </div>
+                          <TabsContent value="summary">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <FileText className="w-5 h-5 text-teal-600" />
+                                  Summary
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(summaryRef)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('Summary', results.summary)}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div ref={summaryRef} className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {results.summary
+                                    .split(/\n\n+/)
+                                    .map((para, idx) => {
+                                      const clean = para
+                                        .replace(/^#+\s*/, '')
+                                        .replace(/^[-*]\s*/, '')
+                                        .replace(/[*_]{1,2}/g, '')
+                                        .trim();
+                                      return clean ? <p key={idx} className="mb-4 last:mb-0">{clean}</p> : null;
+                                    })}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="insights">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <Lightbulb className="w-5 h-5 text-teal-600" />
+                                  Key Insights
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(insightsRef)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('KeyInsights', results.key_insights)}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div ref={insightsRef} className="space-y-4">
+                                  {(() => {
+                                    // Group lines: heading (numbered or bold) + following lines (dashed/sub-points) as one paragraph
+                                    const lines = results.key_insights.split('\n');
+                                    const groups = [];
+                                    let current = '';
+                                    for (let i = 0; i < lines.length; i++) {
+                                      let line = lines[i].replace(/^#+\s*/, '').replace(/^[-*]\s*/, '').replace(/[*_]{1,2}/g, '').trim();
+                                      if (!line) continue;
+                                      // If line looks like a heading (starts with number and dot, or is bold), start new group
+                                      if (/^\d+\./.test(line) || (/^[A-Z]/.test(line) && !current)) {
+                                        if (current) groups.push(current.trim());
+                                        current = line;
+                                      } else {
+                                        // Otherwise, append to current group
+                                        current += ' ' + line;
                                       }
-                                      return <p key={idx} className="mb-4 last:mb-0">{linkify(para.trim())}</p>;
-                                    })
-                                  : <span className="text-gray-400">No report generated.</span>}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TabsContent>
-                      </Tabs>
-                    );
-                  })()}
-                </div>
+                                    }
+                                    if (current) groups.push(current.trim());
+                                    return groups.map((para, idx) => (
+                                      <div key={idx} className="bg-teal-50 rounded-lg px-4 py-3 text-gray-800 shadow-sm">
+                                        {para}
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="reflecting">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <MessageSquare className="w-5 h-5 text-purple-600" />
+                                  Reflecting Questions
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('ReflectingQuestions', results.reflecting_questions.join('\n'))}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {results.reflecting_questions && results.reflecting_questions.length > 0 ? (
+                                    results.reflecting_questions.map((q, idx) => (
+                                      <button
+                                        key={idx}
+                                        className="block w-full text-left p-3 rounded-lg border border-purple-100 bg-purple-50 hover:bg-purple-100 transition cursor-pointer text-gray-800"
+                                        onClick={() => {
+                                          setInput(q);
+                                          setTimeout(() => {
+                                            document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                                          }, 0);
+                                        }}
+                                      >
+                                        {q}
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <div className="text-gray-500">No reflecting questions generated.</div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="suggestions">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <BookOpen className="w-5 h-5 text-green-600" />
+                                  Suggestions
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(questionsRef)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('Suggestions', results.suggestions.join('\n'))}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div ref={questionsRef} className="space-y-3">
+                                  {results.suggestions.slice(0, 5).map((suggestion, index) => (
+                                    <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                                      <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                      <p className="text-gray-700">{suggestion}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="notes">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <BookOpen className="w-5 h-5 text-yellow-600" />
+                                  Notes
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(notesRef)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('Notes', results.notes)}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div ref={notesRef} className="space-y-4">
+                                  {results.notes
+                                    .split(/\n\n+/)
+                                    .map((para, idx) => {
+                                      const clean = para
+                                        .replace(/^#+\s*/, '')
+                                        .replace(/^[-*]\s*/, '')
+                                        .replace(/[*_]{1,2}/g, '')
+                                        .trim();
+                                      return clean ? (
+                                        <div key={idx} className="bg-amber-50 rounded-lg px-4 py-3 text-gray-800 shadow-sm">
+                                          {clean}
+                                        </div>
+                                      ) : null;
+                                    })}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="references">
+                            <Card className="border-amber-100">
+                              <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                  <LinkIcon className="w-5 h-5 text-cyan-600" />
+                                  Reference Links
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(referencesRef)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('References', results.sources.map(s => s.link).join('\n'))}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div ref={referencesRef} className="space-y-3">
+                                  {results.sources.slice(0, 5).map((source, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                      <LinkIcon className="w-4 h-4 text-cyan-400" />
+                                      <a
+                                        href={source.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-cyan-600 hover:text-cyan-800 underline break-all"
+                                      >
+                                        {source.link}
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                          <TabsContent value="report">
+                            <Card className="border-blue-100">
+                              <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                  <FileText className="w-5 h-5 text-blue-600" />
+                                  Report
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleCopy(results.report)}>Copy</Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleSave('Report', results.report)}>Save</Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {results.report
+                                    ? results.report.split(/\n\n+/).map((para, idx) => {
+                                        // Highlight headings in blue and remove hashes
+                                        const headingMatch = para.match(/^\s*#+\s*(.+)$/);
+                                        if (headingMatch) {
+                                          return (
+                                            <div key={idx} className="mb-4 last:mb-0">
+                                              <span className="block font-bold text-blue-700 text-lg">{headingMatch[1].trim()}</span>
+                                            </div>
+                                          );
+                                        }
+                                        return <p key={idx} className="mb-4 last:mb-0">{linkify(para.trim())}</p>;
+                                      })
+                                    : <span className="text-gray-400">No report generated.</span>}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TabsContent>
+                        </Tabs>
+                      );
+                    })()}
+                  </div>
+                )}
               </>
             )}
             {/* No Results State */}
