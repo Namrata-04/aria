@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://x2j4a2e5x4.execute-api.eu-north-1.amazonaws.com'
 
 export interface ResearchRequest {
   topic: string;
@@ -106,7 +106,11 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Ensure the base URL does not have a trailing slash and the endpoint has a leading slash
+    const cleanedBaseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+    const cleanedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    const url = `${cleanedBaseUrl}${cleanedEndpoint}`;
     
     const config: RequestInit = {
       headers: {
