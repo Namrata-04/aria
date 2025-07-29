@@ -278,7 +278,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or specify your S3 website URL for more security
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -847,6 +847,31 @@ async def create_or_get_session(request: SessionRequest):
         "all_storage": created
     }
 
+@app.get("/session/{session_id}", response_model=SessionInfo)
+async def get_session(session_id: str):
+    sessions = await storage_manager.get_session(session_id)
+    session = sessions.get("mongodb") or sessions.get("dynamodb") or sessions.get("file")
+    if session:
+        return {
+            "session_id": session.get("session_id", session_id),
+            "current_topic": session.get("current_topic"),
+            "research_count": len(session.get("research_history", [])),
+            "conversation_count": len(session.get("conversation_history", [])),
+            "created_at": session.get("created_at"),
+            "all_storage": sessions
+        }
+    # If not found, create a new session
+    created = await storage_manager.create_session(session_id)
+    created_session = created.get("mongodb") or created.get("dynamodb") or created.get("file")
+    return {
+        "session_id": created_session.get("session_id", session_id),
+        "current_topic": created_session.get("current_topic"),
+        "research_count": 0,
+        "conversation_count": 0,
+        "created_at": created_session.get("created_at"),
+        "all_storage": created
+    }
+
 @app.get("/sessions")
 async def list_sessions():
     """List all sessions"""
@@ -958,19 +983,11 @@ CORE IDENTITY AND ROLE:
 TOPIC ADHERENCE PROTOCOL:
 Current Research Topic: "{current_topic}"
 
-STRICT TOPIC RELEVANCE RULES:
-1. ONLY answer questions directly related to "{current_topic}"
-2. If a question is tangentially related, acknowledge the connection but redirect to the main topic
-3. For completely unrelated questions, respond with: "I'm focused on helping you with {current_topic}. Let me know if you have any questions about this topic, and I'll be happy to assist."
-4. Consider these as RELATED to the main topic:
-   - Historical context and background
-   - Current developments and trends
-   - Comparative analysis with similar topics
-   - Practical applications and implications
-   - Methodologies and approaches
-   - Key figures and organizations involved
-   - Future predictions and possibilities
-   - Challenges and limitations
+RESPONSE RULES:
+1. If the user's question is related to "{current_topic}", answer it fully and helpfully.
+2. If the user's question is only tangentially related, acknowledge the connection and answer as best you can, but gently guide the user back to the main topic.
+3. If the user's question is clearly unrelated, respond with: "Our current topic is {current_topic}. Would you like to switch topics or ask something related?"
+4. Consider as related: definitions, types, history, applications, comparisons, and any reasonable follow-up to the main topic.
 
 CONVERSATION CONTEXT MANAGEMENT:
 - ALWAYS maintain conversation history and context

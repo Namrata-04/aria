@@ -441,27 +441,14 @@ const ChatNew = () => {
         <div className="grid grid-cols-1 gap-8">
           {/* Main Content (no sidebar column) */}
           <div className="lg:col-span-4">
-            {/* Current Topic Display */}
-            {(() => {
-              // Prefer the topic from researchResults, else the latest input
-              const topic = researchResults?.topic || input || '';
-              const correctionMade = researchResults?.correction_made;
-              const originalTopic = researchResults?.original_topic;
-              return topic ? (
-                <div className="mb-4">
-                  {correctionMade && originalTopic && (
-                    <div className="text-sm italic text-gray-500 mb-1">
-                      Did you mean <span className="italic text-teal-700">{topic}</span>?
-                    </div>
-                  )}
-                  <span className="text-lg font-semibold text-teal-700">{topic}</span>
-                </div>
-              ) : null;
-            })()}
+            {/* Ask ARIA anything label */}
+            <div className="mb-2">
+              <span className="text-lg font-semibold text-teal-700">Ask ARIA anything!</span>
+            </div>
             {/* Input Bar */}
             <form onSubmit={handleSend} className="flex gap-4 mb-8">
               <Input
-                placeholder="Ask ARIA anything..."
+                placeholder="Type your question..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 className="flex-1 h-12 text-lg border-teal-200 focus:border-teal-400"
@@ -479,9 +466,16 @@ const ChatNew = () => {
                 )}
               </Button>
             </form>
-            {/* Chat with ARIA Button */}
+            {/* Topic and Chat with ARIA Button Row (just above summary/results) */}
             {(researchResults || (savedResearchResults && isShowingSavedResults)) && !isLoading && (
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex items-center justify-between">
+                {/* Topic Display (left) */}
+                <div className="flex-1">
+                  <span className="text-lg font-semibold text-teal-700">
+                    {researchResults?.topic || input || ''}
+                  </span>
+                </div>
+                {/* Chat with ARIA Button (right) */}
                 <Button
                   variant="outline"
                   className="text-teal-700 border-teal-400 hover:bg-teal-50"
