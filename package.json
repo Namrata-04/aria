@@ -1,0 +1,14 @@
+{
+  "name": "aria-research-assistant",
+  "version": "1.0.0",
+  "description": "ARIA Research Assistant - Full Stack Application",
+  "scripts": {
+    "build": "cd frontend/aria && npm install && npm run build",
+    "dev": "cd frontend/aria && npm run dev",
+    "install-deps": "cd frontend/aria && npm install"
+  },
+  "workspaces": [
+    "frontend/aria"
+  ],
+  "private": true
+} 
