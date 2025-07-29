@@ -1,5 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+  "builds": [
+    { "src": "api/main.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/main.py" },
+    { "src": "/(.*)", "dest": "frontend/aria/dist/index.html" }
   ]
 } 
