@@ -10,44 +10,37 @@ load_dotenv()
 USE_MONGODB = os.getenv("USE_MONGODB", "true").lower() == "true"
 
 class StorageManager:
-    """Hybrid storage manager that uses both MongoDB and DynamoDB (and file as fallback)"""
+    """Storage manager that uses MongoDB (and file as fallback)"""
     
     def __init__(self):
         self.use_mongodb = USE_MONGODB
         self.mongo_service = None
-        self.dynamo_service = None
-            try:
-                from mongodb_service import (
-                    connect_to_mongodb, create_session as mongo_create_session,
-                    get_session as mongo_get_session, update_session as mongo_update_session,
-                    delete_session as mongo_delete_session, add_search_history as mongo_add_search_history,
-                    get_search_history as mongo_get_search_history, save_research as mongo_save_research,
-                    get_saved_research as mongo_get_saved_research, delete_saved_research as mongo_delete_saved_research
-                )
-                self.mongo_service = {
-                    'connect': connect_to_mongodb,
-                    'create_session': mongo_create_session,
-                    'get_session': mongo_get_session,
-                    'update_session': mongo_update_session,
-                    'delete_session': mongo_delete_session,
-                    'add_search_history': mongo_add_search_history,
-                    'get_search_history': mongo_get_search_history,
-                    'save_research': mongo_save_research,
-                    'get_saved_research': mongo_get_saved_research,
-                    'delete_saved_research': mongo_delete_saved_research
-                }
-                print("🔗 Using MongoDB storage")
-            except ImportError as e:
-                print(f"⚠️ MongoDB not available: {e}")
-                self.use_mongodb = False
         try:
-            import dynamodb_service as ddb
-            self.dynamo_service = ddb
-            print("🔗 Using DynamoDB storage")
-        except ImportError as e:
-            print(f"⚠️ DynamoDB not available: {e}")
-            self.dynamo_service = None
-        if not self.use_mongodb and not self.dynamo_service:
+            from mongodb_service import (
+                connect_to_mongodb, create_session as mongo_create_session,
+                get_session as mongo_get_session, update_session as mongo_update_session,
+                delete_session as mongo_delete_session, add_search_history as mongo_add_search_history,
+                get_search_history as mongo_get_search_history, save_research as mongo_save_research,
+                get_saved_research as mongo_get_saved_research, delete_saved_research as mongo_delete_saved_research
+            )
+            self.mongo_service = {
+                'connect': connect_to_mongodb,
+                'create_session': mongo_create_session,
+                'get_session': mongo_get_session,
+                'update_session': mongo_update_session,
+                'delete_session': mongo_delete_session,
+                'add_search_history': mongo_add_search_history,
+                'get_search_history': mongo_get_search_history,
+                'save_research': mongo_save_research,
+                'get_saved_research': mongo_get_saved_research,
+                'delete_saved_research': mongo_delete_saved_research
+            }
+            print("🔗 Using MongoDB storage")
+        except Exception as e:
+            print(f"⚠️ MongoDB not available: {e}")
+            self.mongo_service = None
+        self.file_service = None
+        if not self.use_mongodb and not self.mongo_service:
             # Fallback to file storage
             from database import (
                 create_session as file_create_session,
@@ -91,11 +84,6 @@ class StorageManager:
                 results['mongodb'] = await self.mongo_service['create_session'](session_id, user_id)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                results['dynamodb'] = await self.dynamo_service.create_session(session_id, user_id)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not results and hasattr(self, 'file_service'):
             results['file'] = await self.file_service['create_session'](session_id, user_id)
         if errors:
@@ -111,11 +99,6 @@ class StorageManager:
                 results['mongodb'] = await self.mongo_service['get_session'](session_id)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                results['dynamodb'] = await self.dynamo_service.get_session(session_id)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not results and hasattr(self, 'file_service'):
             results['file'] = await self.file_service['get_session'](session_id)
         if errors:
@@ -126,14 +109,9 @@ class StorageManager:
         errors = []
         if self.mongo_service is not None:
             try:
-            await self.mongo_service['update_session'](session_id, updates)
+                await self.mongo_service['update_session'](session_id, updates)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                await self.dynamo_service.update_session(session_id, updates)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not (self.mongo_service or self.dynamo_service) and hasattr(self, 'file_service'):
             await self.file_service['update_session'](session_id, updates)
         if errors:
@@ -143,14 +121,9 @@ class StorageManager:
         errors = []
         if self.mongo_service is not None:
             try:
-            await self.mongo_service['delete_session'](session_id)
+                await self.mongo_service['delete_session'](session_id)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                await self.dynamo_service.delete_session(session_id)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not (self.mongo_service or self.dynamo_service) and hasattr(self, 'file_service'):
             await self.file_service['delete_session'](session_id)
         if errors:
@@ -160,14 +133,9 @@ class StorageManager:
         errors = []
         if self.mongo_service is not None:
             try:
-            await self.mongo_service['add_search_history'](session_id, entry)
+                await self.mongo_service['add_search_history'](session_id, entry)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                await self.dynamo_service.add_search_history(session_id, entry)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not (self.mongo_service or self.dynamo_service) and hasattr(self, 'file_service'):
             await self.file_service['add_search_history'](session_id, entry)
         if errors:
@@ -181,11 +149,6 @@ class StorageManager:
                 results['mongodb'] = await self.mongo_service['get_search_history'](session_id)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                results['dynamodb'] = await self.dynamo_service.get_search_history(session_id)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not results and hasattr(self, 'file_service'):
             results['file'] = await self.file_service['get_search_history'](session_id)
         if errors:
@@ -196,14 +159,9 @@ class StorageManager:
         errors = []
         if self.mongo_service is not None:
             try:
-            await self.mongo_service['save_research'](session_id, research_data)
+                await self.mongo_service['save_research'](session_id, research_data)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                await self.dynamo_service.save_research(session_id, research_data)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not (self.mongo_service or self.dynamo_service) and hasattr(self, 'file_service'):
             await self.file_service['save_research'](session_id, research_data)
         if errors:
@@ -217,11 +175,6 @@ class StorageManager:
                 results['mongodb'] = await self.mongo_service['get_saved_research'](session_id)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                results['dynamodb'] = await self.dynamo_service.get_saved_research(session_id)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not results and hasattr(self, 'file_service'):
             results['file'] = await self.file_service['get_saved_research'](session_id)
         if errors:
@@ -232,14 +185,9 @@ class StorageManager:
         errors = []
         if self.mongo_service is not None:
             try:
-            await self.mongo_service['delete_saved_research'](session_id, query)
+                await self.mongo_service['delete_saved_research'](session_id, query)
             except Exception as e:
                 errors.append(f"MongoDB: {e}")
-        if self.dynamo_service is not None:
-            try:
-                await self.dynamo_service.delete_saved_research(session_id, query)
-            except Exception as e:
-                errors.append(f"DynamoDB: {e}")
         if not (self.mongo_service or self.dynamo_service) and hasattr(self, 'file_service'):
             await self.file_service['delete_saved_research'](session_id, query)
         if errors:

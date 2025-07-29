@@ -1,5 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://x2j4a2e5x4.execute-api.eu-north-1.amazonaws.com'
-
+const API_BASE_URL = import.meta.env.VITE_API_URL ||"http://localhost:8000/session"
 export interface ResearchRequest {
   topic: string;
   num_results?: number;
