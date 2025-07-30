@@ -29,15 +29,17 @@ from storage_manager import storage_manager
 # Load environment variables
 load_dotenv()
 
-SERPAPI_KEY = os.getenv("SERPAPI_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# Don't crash if environment variables are missing - just log warnings
 if not SERPAPI_KEY:
-    raise ValueError("SERPAPI_KEY environment variable is required")
+    print("⚠️  Warning: SERPAPI_KEY environment variable is not set")
 if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable is required")
+    print("⚠️  Warning: OPENAI_API_KEY environment variable is not set")
 
-openai.api_key = OPENAI_API_KEY
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
 
 # Keep in-memory sessions for backward compatibility during transition
 chat_sessions: Dict[str, "ChatSession"] = {}
@@ -826,13 +828,18 @@ async def health_check():
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "message": "ARIA API is running"
+            "message": "ARIA API is running",
+            "env_vars": {
+                "openai_set": bool(OPENAI_API_KEY),
+                "serpapi_set": bool(SERPAPI_KEY)
+            }
         }
     except Exception as e:
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "message": "ARIA API is running (with warnings)"
+            "message": "ARIA API is running (with warnings)",
+            "error": str(e)
         }
 
 # Session management endpoints
