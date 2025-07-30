@@ -795,16 +795,27 @@ def get_or_create_session(session_id: Optional[str] = None) -> ChatSession:
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
-    return {
-        "message": "ARIA - Academic Research Intelligence Assistant API",
-        "version": "1.0.0",
-        "endpoints": {
-            "research": "/research - Conduct comprehensive research on a topic",
-            "chat": "/chat - Chat with ARIA about research",
-            "session": "/session - Create or get session info",
-            "sessions": "/sessions - List all active sessions"
+    try:
+        return {
+            "message": "ARIA - Academic Research Intelligence Assistant API",
+            "version": "1.0.0",
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "endpoints": {
+                "research": "/research - Conduct comprehensive research on a topic",
+                "chat": "/chat - Chat with ARIA about research",
+                "session": "/session - Create or get session info",
+                "sessions": "/sessions - List all active sessions"
+            }
         }
-    }
+    except Exception as e:
+        return {
+            "message": "ARIA - Academic Research Intelligence Assistant API",
+            "version": "1.0.0",
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e)
+        }
 
 
 
