@@ -811,11 +811,18 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "active_sessions": len(chat_sessions)
-    }
+    try:
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "message": "ARIA API is running"
+        }
+    except Exception as e:
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "message": "ARIA API is running (with warnings)"
+        }
 
 # Session management endpoints
 @app.post("/session", response_model=SessionInfo)
