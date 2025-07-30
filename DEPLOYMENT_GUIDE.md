@@ -1,40 +1,36 @@
-# Deployment Guide: Frontend on Vercel + Backend on Render
+# Deployment Guide: Frontend on Vercel + Backend on Railway
 
 ## 🚀 Deployment Strategy
 - **Frontend**: Deploy on Vercel (React/Vite)
-- **Backend**: Deploy on Render (FastAPI)
+- **Backend**: Deploy on Railway (FastAPI)
 - **Database**: MongoDB Atlas (cloud database)
 
 ## 📋 Prerequisites
 1. **MongoDB Atlas Account** - for database
-2. **Render Account** - for backend
+2. **Railway Account** - for backend
 3. **Vercel Account** - for frontend
 4. **OpenAI API Key** - for AI functionality
 5. **SerpAPI Key** - for web search
 
 ---
 
-## 🔧 Step 1: Deploy Backend on Render
+## 🔧 Step 1: Deploy Backend on Railway
 
 ### 1.1 Prepare Backend Files
 Your backend is already prepared with:
 - ✅ `api/main.py` - FastAPI application
 - ✅ `requirements.txt` - Python dependencies
-- ✅ `render.yaml` - Render configuration
+- ✅ `railway.json` - Railway configuration
 
-### 1.2 Deploy to Render
-1. **Go to [Render Dashboard](https://dashboard.render.com)**
-2. **Click "New +" → "Web Service"**
+### 1.2 Deploy to Railway
+1. **Go to [Railway Dashboard](https://railway.app)**
+2. **Click "New Project" → "Deploy from GitHub repo"**
 3. **Connect your GitHub repository**
-4. **Configure the service:**
-   - **Name**: `aria-backend`
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
-   - **Root Directory**: Leave empty (or `./`)
+4. **Railway will auto-detect the configuration from `railway.json`**
+5. **The service will be named automatically**
 
-### 1.3 Set Environment Variables on Render
-Add these environment variables in Render dashboard:
+### 1.3 Set Environment Variables on Railway
+Add these environment variables in Railway dashboard:
 ```
 OPENAI_API_KEY=your_openai_api_key
 SERPAPI_KEY=your_serpapi_key
@@ -42,9 +38,9 @@ MONGODB_URI=your_mongodb_atlas_connection_string
 USE_MONGODB=true
 ```
 
-### 1.4 Get Your Render Backend URL
+### 1.4 Get Your Railway Backend URL
 After deployment, you'll get a URL like:
-`https://aria-backend-xyz.onrender.com`
+`https://aria-backend-production-xyz.up.railway.app`
 
 ---
 
@@ -54,7 +50,7 @@ After deployment, you'll get a URL like:
 1. **Go to your Vercel dashboard**
 2. **Add environment variable:**
    - **Name**: `VITE_API_URL`
-   - **Value**: `https://your-render-backend-url.onrender.com`
+   - **Value**: `https://your-railway-backend-url.up.railway.app`
    - **Environment**: Production
 
 ### 2.2 Configure Vercel Build Settings
@@ -87,7 +83,7 @@ After deployment:
 ## 🛠️ Troubleshooting
 
 ### Backend Issues
-- **Check Render logs** for deployment errors
+- **Check Railway logs** for deployment errors
 - **Verify environment variables** are set correctly
 - **Test backend endpoints** directly with Postman/curl
 
@@ -103,7 +99,7 @@ If you get CORS errors, the backend already has CORS configured for all origins.
 
 ## 📝 Environment Variables Summary
 
-### Render (Backend)
+### Railway (Backend)
 ```
 OPENAI_API_KEY=sk-...
 SERPAPI_KEY=your_serpapi_key
@@ -113,7 +109,7 @@ USE_MONGODB=true
 
 ### Vercel (Frontend)
 ```
-VITE_API_URL=https://your-render-backend-url.onrender.com
+VITE_API_URL=https://your-railway-backend-url.up.railway.app
 ```
 
 ---
@@ -121,7 +117,7 @@ VITE_API_URL=https://your-render-backend-url.onrender.com
 ## 🎉 Success!
 After deployment:
 - **Frontend**: `https://your-app.vercel.app`
-- **Backend**: `https://aria-backend-xyz.onrender.com`
+- **Backend**: `https://aria-backend-production-xyz.up.railway.app`
 - **Database**: MongoDB Atlas
 
 Your full-stack application is now live! 🚀 
