@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ||"http://localhost:8000/session"
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 export interface ResearchRequest {
   topic: string;
   num_results?: number;
