@@ -1,7 +1,4 @@
 {
-  "buildCommand": "cd frontend/aria && npm install && npm run build",
-  "outputDirectory": "frontend/aria/dist",
-  "installCommand": "npm install",
   "routes": [
     { "src": "/api/(.*)", "dest": "api/main.py" },
     { "src": "/(.*)", "dest": "frontend/aria/dist/index.html" }
