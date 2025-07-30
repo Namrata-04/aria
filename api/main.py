@@ -29,7 +29,7 @@ if not OPENAI_API_KEY:
     print("⚠️  Warning: OPENAI_API_KEY environment variable is not set")
 
 if OPENAI_API_KEY:
-openai.api_key = OPENAI_API_KEY
+    openai.api_key = OPENAI_API_KEY
 
 # Simple Pydantic models
 class ResearchRequest(BaseModel):
@@ -118,18 +118,18 @@ app.add_middleware(
 async def root():
     """Root endpoint with API information"""
     try:
-    return {
-        "message": "ARIA - Academic Research Intelligence Assistant API",
-        "version": "1.0.0",
+        return {
+            "message": "ARIA - Academic Research Intelligence Assistant API",
+            "version": "1.0.0",
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-        "endpoints": {
-            "research": "/research - Conduct comprehensive research on a topic",
-            "chat": "/chat - Chat with ARIA about research",
-            "session": "/session - Create or get session info",
-            "sessions": "/sessions - List all active sessions"
+            "endpoints": {
+                "research": "/research - Conduct comprehensive research on a topic",
+                "chat": "/chat - Chat with ARIA about research",
+                "session": "/session - Create or get session info",
+                "sessions": "/sessions - List all active sessions"
+            }
         }
-    }
     except Exception as e:
         return {
             "message": "ARIA - Academic Research Intelligence Assistant API",
@@ -153,18 +153,18 @@ async def health_check():
             }
         }
     except Exception as e:
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
             "message": "ARIA API is running (with warnings)",
             "error": str(e)
-    }
+        }
 
 @app.post("/session")
 async def create_or_get_session(request: SessionRequest):
     """Create a new session or get existing session info"""
     try:
-    session_id = request.session_id or str(uuid.uuid4())
+        session_id = request.session_id or str(uuid.uuid4())
         return {
             "session_id": session_id,
             "current_topic": None,
@@ -174,15 +174,15 @@ async def create_or_get_session(request: SessionRequest):
             "status": "created"
         }
     except Exception as e:
-    return {
+        return {
             "session_id": str(uuid.uuid4()),
             "current_topic": None,
-        "research_count": 0,
-        "conversation_count": 0,
+            "research_count": 0,
+            "conversation_count": 0,
             "created_at": datetime.now().isoformat(),
             "status": "created",
             "error": str(e)
-    }
+        }
 
 @app.get("/session/{session_id}")
 async def get_session(session_id: str):
