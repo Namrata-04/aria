@@ -34,3 +34,4 @@ backend/.env.rtf
 frontend/aria/.env.rtf
 backend/.env
 backend/.env
+frontend/aria-frontend
