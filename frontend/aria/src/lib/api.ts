@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const API_BASE_URL = "https://aria-production-ea4a.up.railway.app"
 export interface ResearchRequest {
   topic: string;
   num_results?: number;
