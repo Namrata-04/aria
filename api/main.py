@@ -820,12 +820,12 @@ async def health_check():
 # Session management endpoints
 @app.post("/session", response_model=SessionInfo)
 async def create_or_get_session(request: SessionRequest):
-    """Create a new session or get existing session info (shows both MongoDB and DynamoDB results)"""
+    """Create a new session or get existing session info (shows MongoDB results)"""
     session_id = request.session_id or str(uuid.uuid4())
-    # Get session from both DBs
+    # Get session from storage
     sessions = await storage_manager.get_session(session_id)
-    # Prefer MongoDB if available, else DynamoDB, else file
-    session = sessions.get("mongodb") or sessions.get("dynamodb") or sessions.get("file")
+    # Prefer MongoDB if available, else file
+    session = sessions.get("mongodb") or sessions.get("file")
     if session:
         return {
             "session_id": session.get("session_id", session_id),
@@ -835,9 +835,9 @@ async def create_or_get_session(request: SessionRequest):
             "created_at": session.get("created_at"),
             "all_storage": sessions
         }
-    # Create new session in both DBs
+    # Create new session in storage
     created = await storage_manager.create_session(session_id)
-    created_session = created.get("mongodb") or created.get("dynamodb") or created.get("file")
+    created_session = created.get("mongodb") or created.get("file")
     return {
         "session_id": created_session.get("session_id", session_id),
         "current_topic": created_session.get("current_topic"),
@@ -850,7 +850,7 @@ async def create_or_get_session(request: SessionRequest):
 @app.get("/session/{session_id}", response_model=SessionInfo)
 async def get_session(session_id: str):
     sessions = await storage_manager.get_session(session_id)
-    session = sessions.get("mongodb") or sessions.get("dynamodb") or sessions.get("file")
+    session = sessions.get("mongodb") or sessions.get("file")
     if session:
         return {
             "session_id": session.get("session_id", session_id),
@@ -862,7 +862,7 @@ async def get_session(session_id: str):
         }
     # If not found, create a new session
     created = await storage_manager.create_session(session_id)
-    created_session = created.get("mongodb") or created.get("dynamodb") or created.get("file")
+    created_session = created.get("mongodb") or created.get("file")
     return {
         "session_id": created_session.get("session_id", session_id),
         "current_topic": created_session.get("current_topic"),
