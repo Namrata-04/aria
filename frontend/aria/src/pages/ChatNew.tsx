@@ -58,7 +58,7 @@ const ChatNew = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [researchResults, setResearchResults] = useState<ResearchResponse | null>(null);
+  const [researchResults, setResearchResults] = useState<any | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const insightsRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef<HTMLDivElement>(null);
