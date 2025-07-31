@@ -349,7 +349,7 @@ async def agent_3_generate_structured_report(topic: str, relevant_articles: List
         
         # Prepare content for report generation
         articles_content = "\n\n".join([
-            f"Source {i+1}:\nTitle: {article.get('title', '')}\nContent: {article.get('snippet', '')}\nAuthor: {article.get('author', 'Unknown')}\nPublished: {article.get('published', 'Unknown')}"
+            f"Source {i+1}:\nTitle: {article.get('title', '')}\nContent: {article.get('snippet', '')}\nAuthor: {article.get('author', 'Unknown')}\nPublished: {article.get('published', 'Unknown')}\nURL: {article.get('link', '')}"
             for i, article in enumerate(relevant_articles)
         ])
         
@@ -371,17 +371,19 @@ async def agent_3_generate_structured_report(topic: str, relevant_articles: List
    - Critical Analysis
 4. **Recommendations** (300-400 words): Actionable insights and suggestions
 5. **Conclusion** (200-300 words): Summary and future implications
+6. **References**: Include proper citations with the actual URLs from the sources provided
 
 **Writing Guidelines:**
 - Use academic writing style
-- Include proper citations and references
+- Include proper citations and references with actual URLs
 - Maintain logical flow and coherence
 - Provide evidence-based analysis
 - Use clear headings and subheadings
 - Include relevant statistics and data where available
 - Address potential limitations and gaps
+- DO NOT include word count at the end
 
-Format the report professionally with clear sections, bullet points where appropriate, and proper academic structure."""
+Format the report professionally with clear sections, bullet points where appropriate, and proper academic structure. Include a References section with numbered citations and the actual URLs from the sources."""
 
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",

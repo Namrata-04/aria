@@ -394,7 +394,7 @@ METHODOLOGY:
 4. ACADEMIC RIGOR: Maintain scholarly standards throughout
 
 OUTPUT SPECIFICATIONS:
-- Length: Approximately 250-300 words
+- Length: Approximately 300-400 words
 - Structure: 3-4 well-developed paragraphs
 - Style: Formal academic prose suitable for research papers
 - Focus: Synthesis rather than mere compilation
