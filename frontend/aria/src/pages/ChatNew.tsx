@@ -212,7 +212,9 @@ const ChatNew = () => {
     setChatInput('');
     setIsChatLoading(true);
     try {
-      const res = await apiService.chatWithAria(sessionId, msgForAI, [...chatMessages, userMsg]);
+      // Get the current research topic for context-aware chat
+      const currentTopic = researchResults?.topic || input || '';
+      const res = await apiService.chatWithAria(sessionId, msgForAI, [...chatMessages, userMsg], currentTopic);
       setChatMessages(prev => [...prev, { role: 'ai' as const, content: res.response }]);
     } catch (err: any) {
       setChatMessages(prev => [...prev, { role: 'ai' as const, content: 'Sorry, there was an error getting a response.' }]);

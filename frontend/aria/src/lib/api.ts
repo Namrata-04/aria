@@ -32,7 +32,7 @@ export const api = {
     return response.json()
   },
 
-  async chat(sessionId: string, message: string) {
+  async chat(sessionId: string, message: string, researchTopic?: string) {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
@@ -41,6 +41,7 @@ export const api = {
       body: JSON.stringify({
         session_id: sessionId,
         message: message,
+        research_topic: researchTopic,
       }),
     })
     
@@ -81,8 +82,8 @@ export const apiService = {
     return api.research(sessionId || 'default', topic, numResults)
   },
   
-  async chatWithAria(sessionId: string, message: string, history?: any[]) {
-    return api.chat(sessionId, message)
+  async chatWithAria(sessionId: string, message: string, history?: any[], researchTopic?: string) {
+    return api.chat(sessionId, message, researchTopic)
   },
   
   async getAllSavedResearch() {
