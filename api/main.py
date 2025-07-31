@@ -9,15 +9,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 
 # Environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
-# Configure OpenAI
+# Configure OpenAI client
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+else:
+    openai_client = None
 
 # Don't crash if environment variables are missing - just log warnings
 if not SERPAPI_KEY:
@@ -62,8 +64,8 @@ async def search_web(query: str, num_results: int = 5) -> List[Dict]:
 # AI analysis functions
 def generate_summary(topic: str, search_results: List[Dict]) -> str:
     """Generate a comprehensive summary using OpenAI"""
-    if not OPENAI_API_KEY:
-        print(f"⚠️  No OpenAI API key for summary generation")
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for summary generation")
         return f"Research summary for: {topic}"
     
     try:
@@ -78,7 +80,7 @@ Search Results:
 
 Please provide a detailed, well-structured summary that covers the key aspects of {topic}. Include main points, important details, and relevant context."""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500
@@ -93,8 +95,8 @@ Please provide a detailed, well-structured summary that covers the key aspects o
 
 def generate_notes(topic: str, search_results: List[Dict]) -> str:
     """Generate detailed notes using OpenAI"""
-    if not OPENAI_API_KEY:
-        print(f"⚠️  No OpenAI API key for notes generation")
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for notes generation")
         return "Research notes would go here"
     
     try:
@@ -113,7 +115,7 @@ Please create comprehensive notes that include:
 - Notable quotes or statements
 - Background context"""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400
@@ -128,8 +130,8 @@ Please create comprehensive notes that include:
 
 def generate_key_insights(topic: str, search_results: List[Dict]) -> str:
     """Generate key insights using OpenAI"""
-    if not OPENAI_API_KEY:
-        print(f"⚠️  No OpenAI API key for insights generation")
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for insights generation")
         return "Key insights would go here"
     
     try:
@@ -147,7 +149,7 @@ Please provide 3-5 key insights that are:
 - Implications for understanding the topic
 - Trends or patterns identified"""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300
@@ -162,8 +164,8 @@ Please provide 3-5 key insights that are:
 
 def generate_suggestions(topic: str, search_results: List[Dict]) -> List[str]:
     """Generate research suggestions using OpenAI"""
-    if not OPENAI_API_KEY:
-        print(f"⚠️  No OpenAI API key for suggestions generation")
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for suggestions generation")
         return ["Suggestion 1", "Suggestion 2"]
     
     try:
@@ -181,7 +183,7 @@ Please suggest:
 - Areas that need more research
 - Different angles to consider"""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200
@@ -197,8 +199,8 @@ Please suggest:
 
 def generate_reflecting_questions(topic: str, search_results: List[Dict]) -> List[str]:
     """Generate reflecting questions using OpenAI"""
-    if not OPENAI_API_KEY:
-        print(f"⚠️  No OpenAI API key for questions generation")
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for questions generation")
         return ["Question 1", "Question 2"]
     
     try:
@@ -217,7 +219,7 @@ Please create questions that:
 - Consider different perspectives
 - Connect to broader themes"""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200
@@ -231,9 +233,10 @@ Please create questions that:
         print(f"❌ Questions generation error: {e}")
         return ["Question 1", "Question 2"]
 
-async def generate_chat_response(message: str, history: List[Dict] = None) -> str:
+def generate_chat_response(message: str, history: List[Dict] = None) -> str:
     """Generate a contextual chat response using OpenAI"""
-    if not OPENAI_API_KEY:
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for chat response")
         return f"Hello! I'm ARIA. You said: {message}"
     
     try:
@@ -255,7 +258,7 @@ Please provide a helpful, informative response that:
 - Suggests further research if appropriate
 - Maintains a helpful and professional tone"""
 
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300
@@ -444,7 +447,7 @@ async def get_session(session_id: str):
 async def chat_with_aria(request: ChatRequest):
     """Chat with ARIA"""
     try:
-        response = await generate_chat_response(request.message, request.history)
+        response = generate_chat_response(request.message, request.history)
         return {
             "session_id": request.session_id,
             "response": response,
@@ -512,12 +515,12 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
 async def test_openai():
     """Test OpenAI API functionality"""
     try:
-        if not OPENAI_API_KEY:
-            return {"error": "No OpenAI API key set", "status": "failed"}
+        if not openai_client:
+            return {"error": "No OpenAI client available", "status": "failed"}
         
-        print(f"🔍 Testing OpenAI API with key: {OPENAI_API_KEY[:10]}...")
+        print(f"🔍 Testing OpenAI API...")
         
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": "Say hello"}],
             max_tokens=10
@@ -529,12 +532,12 @@ async def test_openai():
         return {
             "status": "success",
             "response": result,
-            "api_key_set": bool(OPENAI_API_KEY)
+            "client_available": bool(openai_client)
         }
     except Exception as e:
         print(f"❌ OpenAI test failed: {e}")
         return {
             "status": "failed",
             "error": str(e),
-            "api_key_set": bool(OPENAI_API_KEY)
+            "client_available": bool(openai_client)
         }
