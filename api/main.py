@@ -463,12 +463,7 @@ User: {message}
 - If the question is about '{research_topic}': Provide detailed, helpful information
 - If the question is about ANYTHING ELSE: Say "I am bound to answer only questions related to '{research_topic}'. Please ask me about '{research_topic}' instead."
 - Focus ALL responses on '{research_topic}' and related topics only
-- Be helpful but strict about staying on topic
-
-Example responses:
-- Question about '{research_topic}': Provide detailed answer
-- Question about drones: "I am bound to answer only questions related to '{research_topic}'. Please ask me about '{research_topic}' instead."
-- Question about weather: "I am bound to answer only questions related to '{research_topic}'. Please ask me about '{research_topic}' instead.""""
+- Be helpful but strict about staying on topic"""
         else:
             prompt = f"""You are ARIA, an Academic Research Intelligence Assistant. You help users with research and provide thoughtful, informative responses.
 
