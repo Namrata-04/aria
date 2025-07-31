@@ -63,9 +63,11 @@ async def search_web(query: str, num_results: int = 5) -> List[Dict]:
 async def generate_summary(topic: str, search_results: List[Dict]) -> str:
     """Generate a comprehensive summary using OpenAI"""
     if not OPENAI_API_KEY:
+        print(f"⚠️  No OpenAI API key for summary generation")
         return f"Research summary for: {topic}"
     
     try:
+        print(f"🔍 Generating summary for: {topic}")
         # Prepare context from search results
         context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
         
@@ -82,17 +84,21 @@ Please provide a detailed, well-structured summary that covers the key aspects o
             max_tokens=500
         )
         
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        print(f"✅ Summary generated successfully")
+        return result
     except Exception as e:
-        print(f"Summary generation error: {e}")
+        print(f"❌ Summary generation error: {e}")
         return f"Research summary for: {topic}"
 
 async def generate_notes(topic: str, search_results: List[Dict]) -> str:
     """Generate detailed notes using OpenAI"""
     if not OPENAI_API_KEY:
+        print(f"⚠️  No OpenAI API key for notes generation")
         return "Research notes would go here"
     
     try:
+        print(f"🔍 Generating notes for: {topic}")
         context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
         
         prompt = f"""Based on the search results about '{topic}', create detailed research notes:
@@ -113,17 +119,21 @@ Please create comprehensive notes that include:
             max_tokens=400
         )
         
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        print(f"✅ Notes generated successfully")
+        return result
     except Exception as e:
-        print(f"Notes generation error: {e}")
+        print(f"❌ Notes generation error: {e}")
         return "Research notes would go here"
 
 async def generate_key_insights(topic: str, search_results: List[Dict]) -> str:
     """Generate key insights using OpenAI"""
     if not OPENAI_API_KEY:
+        print(f"⚠️  No OpenAI API key for insights generation")
         return "Key insights would go here"
     
     try:
+        print(f"🔍 Generating insights for: {topic}")
         context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
         
         prompt = f"""Based on the search results about '{topic}', identify the most important insights:
@@ -143,9 +153,11 @@ Please provide 3-5 key insights that are:
             max_tokens=300
         )
         
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        print(f"✅ Insights generated successfully")
+        return result
     except Exception as e:
-        print(f"Insights generation error: {e}")
+        print(f"❌ Insights generation error: {e}")
         return "Key insights would go here"
 
 async def generate_suggestions(topic: str, search_results: List[Dict]) -> List[str]:
