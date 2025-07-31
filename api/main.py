@@ -507,3 +507,34 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
             "reflecting_questions": [],
             "error": str(e)
         }
+
+@app.get("/test-openai")
+async def test_openai():
+    """Test OpenAI API functionality"""
+    try:
+        if not OPENAI_API_KEY:
+            return {"error": "No OpenAI API key set", "status": "failed"}
+        
+        print(f"🔍 Testing OpenAI API with key: {OPENAI_API_KEY[:10]}...")
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Say hello"}],
+            max_tokens=10
+        )
+        
+        result = response.choices[0].message.content
+        print(f"✅ OpenAI test successful: {result}")
+        
+        return {
+            "status": "success",
+            "response": result,
+            "api_key_set": bool(OPENAI_API_KEY)
+        }
+    except Exception as e:
+        print(f"❌ OpenAI test failed: {e}")
+        return {
+            "status": "failed",
+            "error": str(e),
+            "api_key_set": bool(OPENAI_API_KEY)
+        }
