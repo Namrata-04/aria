@@ -233,48 +233,200 @@ Please create questions that:
         print(f"❌ Questions generation error: {e}")
         return ["Question 1", "Question 2"]
 
-def generate_report(topic: str, search_results: List[Dict], summary: str, notes: str, key_insights: str) -> str:
-    """Generate a comprehensive research report using OpenAI"""
+# Enhanced 3-Agent Report Generation System
+
+async def agent_1_fetch_articles(topic: str, num_results: int = 20) -> List[Dict]:
+    """Agent 1: Fetches comprehensive articles using multiple search strategies"""
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for article fetching")
+        return []
+    
+    try:
+        print(f"🔍 Agent 1: Fetching articles for: {topic}")
+        
+        # Multiple search strategies for comprehensive coverage
+        search_queries = [
+            topic,
+            f"{topic} overview",
+            f"{topic} analysis",
+            f"{topic} research",
+            f"{topic} latest developments",
+            f"{topic} trends",
+            f"{topic} applications",
+            f"{topic} benefits",
+            f"{topic} challenges"
+        ]
+        
+        all_articles = []
+        
+        for query in search_queries[:5]:  # Use first 5 queries to get variety
+            try:
+                articles = await search_web(query, 4)  # 4 articles per query
+                all_articles.extend(articles)
+            except Exception as e:
+                print(f"⚠️  Search failed for query '{query}': {e}")
+                continue
+        
+        # Remove duplicates based on URL
+        unique_articles = []
+        seen_urls = set()
+        for article in all_articles:
+            if article.get('link') not in seen_urls:
+                unique_articles.append(article)
+                seen_urls.add(article.get('link'))
+        
+        print(f"✅ Agent 1: Fetched {len(unique_articles)} unique articles")
+        return unique_articles[:20]  # Limit to 20 articles
+        
+    except Exception as e:
+        print(f"❌ Agent 1 error: {e}")
+        return []
+
+async def agent_2_analyze_relevance(topic: str, articles: List[Dict]) -> Dict:
+    """Agent 2: Analyzes articles and finds most relevant content"""
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for content analysis")
+        return {"relevant_articles": [], "key_themes": [], "analysis": ""}
+    
+    try:
+        print(f"🔍 Agent 2: Analyzing relevance for: {topic}")
+        
+        # Prepare article data for analysis
+        articles_text = "\n\n".join([
+            f"Article {i+1}:\nTitle: {article.get('title', '')}\nContent: {article.get('snippet', '')}\nURL: {article.get('link', '')}"
+            for i, article in enumerate(articles)
+        ])
+        
+        prompt = f"""You are an expert research analyst. Analyze the following articles about '{topic}' and:
+
+1. **Identify the most relevant articles** (rank them by relevance to the search query)
+2. **Extract key themes and patterns** across the articles
+3. **Find conflicting or complementary information**
+4. **Identify gaps in the research**
+
+Articles to analyze:
+{articles_text}
+
+Please provide:
+- Top 5 most relevant articles with relevance scores (1-10)
+- Key themes and patterns found
+- Important insights and findings
+- Research gaps identified
+- Quality assessment of the sources
+
+Format your response as structured analysis."""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=600
+        )
+        
+        analysis = response.choices[0].message.content
+        print(f"✅ Agent 2: Analysis completed")
+        
+        # Extract relevant articles (top 5)
+        relevant_articles = articles[:5] if len(articles) >= 5 else articles
+        
+        return {
+            "relevant_articles": relevant_articles,
+            "analysis": analysis,
+            "total_articles_analyzed": len(articles)
+        }
+        
+    except Exception as e:
+        print(f"❌ Agent 2 error: {e}")
+        return {"relevant_articles": articles[:5], "analysis": "", "total_articles_analyzed": len(articles)}
+
+async def agent_3_generate_structured_report(topic: str, relevant_articles: List[Dict], analysis: str) -> str:
+    """Agent 3: Generates comprehensive structured report"""
     if not openai_client:
         print(f"⚠️  No OpenAI client for report generation")
         return "No report generated."
     
     try:
-        print(f"🔍 Generating report for: {topic}")
-        context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
+        print(f"🔍 Agent 3: Generating structured report for: {topic}")
         
-        prompt = f"""Based on the following research about '{topic}', create a comprehensive research report:
+        # Prepare content for report generation
+        articles_content = "\n\n".join([
+            f"Source {i+1}:\nTitle: {article.get('title', '')}\nContent: {article.get('snippet', '')}\nAuthor: {article.get('author', 'Unknown')}\nPublished: {article.get('published', 'Unknown')}"
+            for i, article in enumerate(relevant_articles)
+        ])
+        
+        prompt = f"""You are an expert research report writer. Create a comprehensive, well-structured research report about '{topic}' based on the following sources and analysis.
 
-Search Results:
-{context}
+**Sources:**
+{articles_content}
 
-Summary: {summary}
+**Analysis:**
+{analysis}
 
-Notes: {notes}
+**Report Structure Requirements:**
+1. **Abstract** (150-200 words): Executive summary of key findings
+2. **Introduction** (200-300 words): Background, context, and research objectives
+3. **Main Body** (800-1200 words): 
+   - Literature Review
+   - Key Findings and Analysis
+   - Current State of Knowledge
+   - Critical Analysis
+4. **Recommendations** (300-400 words): Actionable insights and suggestions
+5. **Conclusion** (200-300 words): Summary and future implications
 
-Key Insights: {key_insights}
+**Writing Guidelines:**
+- Use academic writing style
+- Include proper citations and references
+- Maintain logical flow and coherence
+- Provide evidence-based analysis
+- Use clear headings and subheadings
+- Include relevant statistics and data where available
+- Address potential limitations and gaps
 
-Please create a well-structured research report that includes:
-- Executive Summary
-- Introduction and Background
-- Key Findings and Analysis
-- Implications and Recommendations
-- Conclusion
-
-Format the report professionally with clear sections and bullet points where appropriate."""
+Format the report professionally with clear sections, bullet points where appropriate, and proper academic structure."""
 
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=800
+            max_tokens=1500
         )
         
-        result = response.choices[0].message.content
-        print(f"✅ Report generated successfully")
-        return result
+        report = response.choices[0].message.content
+        print(f"✅ Agent 3: Structured report generated successfully")
+        return report
+        
     except Exception as e:
-        print(f"❌ Report generation error: {e}")
+        print(f"❌ Agent 3 error: {e}")
         return "No report generated."
+
+async def generate_comprehensive_report(topic: str) -> str:
+    """Orchestrates the 3-agent system for comprehensive report generation"""
+    try:
+        print(f"🚀 Starting 3-agent report generation for: {topic}")
+        
+        # Agent 1: Fetch comprehensive articles
+        print("📊 Agent 1: Fetching articles...")
+        articles = await agent_1_fetch_articles(topic, 20)
+        
+        if not articles:
+            return "Unable to fetch articles for report generation."
+        
+        # Agent 2: Analyze and find relevant content
+        print("🔍 Agent 2: Analyzing relevance...")
+        analysis_result = await agent_2_analyze_relevance(topic, articles)
+        
+        # Agent 3: Generate structured report
+        print("📝 Agent 3: Generating structured report...")
+        report = await agent_3_generate_structured_report(
+            topic, 
+            analysis_result["relevant_articles"], 
+            analysis_result["analysis"]
+        )
+        
+        print(f"✅ 3-agent report generation completed successfully")
+        return report
+        
+    except Exception as e:
+        print(f"❌ 3-agent system error: {e}")
+        return f"Error in report generation: {str(e)}"
 
 def generate_chat_response(message: str, history: List[Dict] = None) -> str:
     """Generate a contextual chat response using OpenAI"""
@@ -517,7 +669,7 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
         key_insights = generate_key_insights(request.topic, search_results)
         suggestions = generate_suggestions(request.topic, search_results)
         reflecting_questions = generate_reflecting_questions(request.topic, search_results)
-        report = generate_report(request.topic, search_results, summary, notes, key_insights)
+        report = await generate_comprehensive_report(request.topic) # Changed to use the new 3-agent system
         
         # Convert search results to ResearchResult objects
         sources = []
