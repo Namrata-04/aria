@@ -308,6 +308,7 @@ class SaveResearchRequest(BaseModel):
 async def lifespan(app: FastAPI):
     print("ARIA Research Assistant API starting up...")
     print("Initializing with full research capabilities...")
+    print("🔍 Web search and AI analysis enabled")
     yield
     print("ARIA Research Assistant API shutting down...")
 
