@@ -430,7 +430,7 @@ async def generate_comprehensive_report(topic: str) -> str:
         print(f"❌ 3-agent system error: {e}")
         return f"Error in report generation: {str(e)}"
 
-def generate_chat_response(message: str, history: List[Dict] = None) -> str:
+async def generate_chat_response(message: str, history: List[Dict] = None, research_topic: str = None) -> str:
     """Generate a contextual chat response using OpenAI"""
     if not openai_client:
         print(f"⚠️  No OpenAI client for chat response")
@@ -442,7 +442,29 @@ def generate_chat_response(message: str, history: List[Dict] = None) -> str:
         if history:
             context = "\n".join([f"User: {msg.get('user', '')}\nARIA: {msg.get('assistant', '')}" for msg in history[-5:]])
         
-        prompt = f"""You are ARIA, an Academic Research Intelligence Assistant. You help users with research and provide thoughtful, informative responses.
+        # Create topic-specific prompt
+        if research_topic:
+            prompt = f"""You are ARIA, an Academic Research Intelligence Assistant. You are currently helping with research about '{research_topic}'.
+
+**IMPORTANT**: Focus your responses specifically on topics related to '{research_topic}'. If the user asks about something unrelated to this topic, politely redirect them back to '{research_topic}' or suggest how their question might relate to '{research_topic}'.
+
+Previous conversation:
+{context}
+
+User: {message}
+
+Please provide a helpful, informative response that:
+- Addresses the user's question directly
+- Focuses specifically on '{research_topic}' and related topics
+- Provides relevant information about '{research_topic}'
+- If the question is unrelated to '{research_topic}', politely redirect to the topic
+- Suggests further research within the '{research_topic}' domain if appropriate
+- Maintains a helpful and professional tone
+- Uses the research context to provide accurate, detailed answers
+
+Example: If researching 'brain cancer' and user asks 'What are the symptoms?', provide detailed brain cancer symptoms. If they ask about 'drones', redirect to brain cancer topics."""
+        else:
+            prompt = f"""You are ARIA, an Academic Research Intelligence Assistant. You help users with research and provide thoughtful, informative responses.
 
 Previous conversation:
 {context}
@@ -458,7 +480,7 @@ Please provide a helpful, informative response that:
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300
+            max_tokens=400
         )
         
         return response.choices[0].message.content
@@ -475,6 +497,7 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str
     history: Optional[list[dict]] = None
+    research_topic: Optional[str] = None
 
 class SessionRequest(BaseModel):
     session_id: Optional[str] = None
@@ -644,7 +667,10 @@ async def get_session(session_id: str):
 async def chat_with_aria(request: ChatRequest):
     """Chat with ARIA"""
     try:
-        response = generate_chat_response(request.message, request.history)
+        # Extract research topic from the request or use a default
+        research_topic = getattr(request, 'research_topic', None)
+        
+        response = await generate_chat_response(request.message, request.history, research_topic)
         return {
             "session_id": request.session_id,
             "response": response,
