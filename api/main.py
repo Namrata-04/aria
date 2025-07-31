@@ -60,7 +60,7 @@ async def search_web(query: str, num_results: int = 5) -> List[Dict]:
         return []
 
 # AI analysis functions
-async def generate_summary(topic: str, search_results: List[Dict]) -> str:
+def generate_summary(topic: str, search_results: List[Dict]) -> str:
     """Generate a comprehensive summary using OpenAI"""
     if not OPENAI_API_KEY:
         print(f"⚠️  No OpenAI API key for summary generation")
@@ -91,7 +91,7 @@ Please provide a detailed, well-structured summary that covers the key aspects o
         print(f"❌ Summary generation error: {e}")
         return f"Research summary for: {topic}"
 
-async def generate_notes(topic: str, search_results: List[Dict]) -> str:
+def generate_notes(topic: str, search_results: List[Dict]) -> str:
     """Generate detailed notes using OpenAI"""
     if not OPENAI_API_KEY:
         print(f"⚠️  No OpenAI API key for notes generation")
@@ -126,7 +126,7 @@ Please create comprehensive notes that include:
         print(f"❌ Notes generation error: {e}")
         return "Research notes would go here"
 
-async def generate_key_insights(topic: str, search_results: List[Dict]) -> str:
+def generate_key_insights(topic: str, search_results: List[Dict]) -> str:
     """Generate key insights using OpenAI"""
     if not OPENAI_API_KEY:
         print(f"⚠️  No OpenAI API key for insights generation")
@@ -160,12 +160,14 @@ Please provide 3-5 key insights that are:
         print(f"❌ Insights generation error: {e}")
         return "Key insights would go here"
 
-async def generate_suggestions(topic: str, search_results: List[Dict]) -> List[str]:
+def generate_suggestions(topic: str, search_results: List[Dict]) -> List[str]:
     """Generate research suggestions using OpenAI"""
     if not OPENAI_API_KEY:
+        print(f"⚠️  No OpenAI API key for suggestions generation")
         return ["Suggestion 1", "Suggestion 2"]
     
     try:
+        print(f"🔍 Generating suggestions for: {topic}")
         context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
         
         prompt = f"""Based on the search results about '{topic}', suggest 3-5 related research areas or questions:
@@ -186,17 +188,21 @@ Please suggest:
         )
         
         suggestions = response.choices[0].message.content.split('\n')
-        return [s.strip() for s in suggestions if s.strip() and not s.startswith('-')]
+        result = [s.strip() for s in suggestions if s.strip() and not s.startswith('-')]
+        print(f"✅ Suggestions generated successfully")
+        return result
     except Exception as e:
-        print(f"Suggestions generation error: {e}")
+        print(f"❌ Suggestions generation error: {e}")
         return ["Suggestion 1", "Suggestion 2"]
 
-async def generate_reflecting_questions(topic: str, search_results: List[Dict]) -> List[str]:
+def generate_reflecting_questions(topic: str, search_results: List[Dict]) -> List[str]:
     """Generate reflecting questions using OpenAI"""
     if not OPENAI_API_KEY:
+        print(f"⚠️  No OpenAI API key for questions generation")
         return ["Question 1", "Question 2"]
     
     try:
+        print(f"🔍 Generating questions for: {topic}")
         context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
         
         prompt = f"""Based on the search results about '{topic}', generate 3-5 thoughtful reflecting questions:
@@ -218,9 +224,11 @@ Please create questions that:
         )
         
         questions = response.choices[0].message.content.split('\n')
-        return [q.strip() for q in questions if q.strip() and not q.startswith('-')]
+        result = [q.strip() for q in questions if q.strip() and not q.startswith('-')]
+        print(f"✅ Questions generated successfully")
+        return result
     except Exception as e:
-        print(f"Questions generation error: {e}")
+        print(f"❌ Questions generation error: {e}")
         return ["Question 1", "Question 2"]
 
 async def generate_chat_response(message: str, history: List[Dict] = None) -> str:
@@ -458,11 +466,11 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
         search_results = await search_web(request.topic, request.num_results)
         
         # Generate AI analysis
-        summary = await generate_summary(request.topic, search_results)
-        notes = await generate_notes(request.topic, search_results)
-        key_insights = await generate_key_insights(request.topic, search_results)
-        suggestions = await generate_suggestions(request.topic, search_results)
-        reflecting_questions = await generate_reflecting_questions(request.topic, search_results)
+        summary = generate_summary(request.topic, search_results)
+        notes = generate_notes(request.topic, search_results)
+        key_insights = generate_key_insights(request.topic, search_results)
+        suggestions = generate_suggestions(request.topic, search_results)
+        reflecting_questions = generate_reflecting_questions(request.topic, search_results)
         
         # Convert search results to ResearchResult objects
         sources = []
