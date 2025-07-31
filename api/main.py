@@ -233,6 +233,49 @@ Please create questions that:
         print(f"❌ Questions generation error: {e}")
         return ["Question 1", "Question 2"]
 
+def generate_report(topic: str, search_results: List[Dict], summary: str, notes: str, key_insights: str) -> str:
+    """Generate a comprehensive research report using OpenAI"""
+    if not openai_client:
+        print(f"⚠️  No OpenAI client for report generation")
+        return "No report generated."
+    
+    try:
+        print(f"🔍 Generating report for: {topic}")
+        context = "\n".join([f"Title: {r['title']}\nContent: {r['snippet']}\n" for r in search_results])
+        
+        prompt = f"""Based on the following research about '{topic}', create a comprehensive research report:
+
+Search Results:
+{context}
+
+Summary: {summary}
+
+Notes: {notes}
+
+Key Insights: {key_insights}
+
+Please create a well-structured research report that includes:
+- Executive Summary
+- Introduction and Background
+- Key Findings and Analysis
+- Implications and Recommendations
+- Conclusion
+
+Format the report professionally with clear sections and bullet points where appropriate."""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800
+        )
+        
+        result = response.choices[0].message.content
+        print(f"✅ Report generated successfully")
+        return result
+    except Exception as e:
+        print(f"❌ Report generation error: {e}")
+        return "No report generated."
+
 def generate_chat_response(message: str, history: List[Dict] = None) -> str:
     """Generate a contextual chat response using OpenAI"""
     if not openai_client:
@@ -474,6 +517,7 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
         key_insights = generate_key_insights(request.topic, search_results)
         suggestions = generate_suggestions(request.topic, search_results)
         reflecting_questions = generate_reflecting_questions(request.topic, search_results)
+        report = generate_report(request.topic, search_results, summary, notes, key_insights)
         
         # Convert search results to ResearchResult objects
         sources = []
@@ -495,7 +539,8 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
             "key_insights": key_insights,
             "sources": sources,
             "suggestions": suggestions,
-            "reflecting_questions": reflecting_questions
+            "reflecting_questions": reflecting_questions,
+            "report": report
         }
     except Exception as e:
         return {
@@ -508,6 +553,7 @@ async def conduct_research(request: ResearchRequest, session_id: Optional[str] =
             "sources": [],
             "suggestions": [],
             "reflecting_questions": [],
+            "report": "Error generating report",
             "error": str(e)
         }
 
